@@ -1384,8 +1384,11 @@ class API(ModelView):
             relation_instance = get_by(self.session, related_model,
                                        relationinstid)
             # Removes an object from the relation list.
-            relation.remove(relation_instance)
-            was_deleted = len(self.session.dirty) > 0
+            try:
+                relation.remove(relation_instance)
+                was_deleted = len(self.session.dirty) > 0
+            except Exception as e:
+                was_deleted = False
         elif inst is not None:
             self.session.delete(inst)
             was_deleted = len(self.session.deleted) > 0
