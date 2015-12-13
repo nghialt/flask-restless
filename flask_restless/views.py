@@ -1438,8 +1438,11 @@ class API(ModelView):
             return dict(message='Unable to decode data'), 400
 
         # apply any preprocessors to the POST arguments
+        response_code = 201
+        result_pre = None
         for preprocessor in self.preprocessors['POST']:
-            preprocessor(data=data)
+            if not result_pre:
+                result_pre = preprocessor(data=data)
 
         try:
             # Convert the dictionary representation into an instance of the
@@ -1452,7 +1455,11 @@ class API(ModelView):
             # appears in the database.
             result = self.serialize(instance)
         except self.validation_exceptions as exception:
-            return self._handle_validation_exception(exception)
+            if not result_pre:
+                return self._handle_validation_exception(exception)
+            else:
+                result = self.serialize(result_pre)
+                response_code = 200
         # Determine the value of the primary key for this instance and
         # encode URL-encode it (in case it is a Unicode string).
         pk_name = self.primary_key or primary_key_name(instance)
@@ -1468,7 +1475,7 @@ class API(ModelView):
         headers = dict(Location=url)
         for postprocessor in self.postprocessors['POST']:
             postprocessor(result=result)
-        return result, 201, headers
+        return result, response_code, headers
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
